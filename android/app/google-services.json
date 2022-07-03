@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "581395237574",
+    "firebase_url": "https://idehshop.firebaseio.com",
+    "project_id": "idehshop",
+    "storage_bucket": "idehshop.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:581395237574:android:54f8a1770b96134b3365c7",
+        "android_client_info": {
+          "package_name": "ir.webideh.idehshop"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "581395237574-qhogt0tiangjon2ek7pihjvv4n6e88iv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXd7g1lJcbFesg3dIbUgBNwo247-uf4IY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "581395237574-qhogt0tiangjon2ek7pihjvv4n6e88iv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

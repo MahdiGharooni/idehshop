@@ -4,7 +4,7 @@ A new Flutter project for online shopping in Android and IOS platforms.
 
 ## Getting Started
 
-This 
+This location-based application, is a platform t but every thing from the nearest stores.
 
 
 

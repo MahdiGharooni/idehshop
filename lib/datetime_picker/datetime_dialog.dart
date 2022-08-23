@@ -98,3 +98,19 @@ Future<TimeOfDay> _selectTime(BuildContext context,
       });
 }
 
+showDateTimeDialog(
+    BuildContext context, {
+      @required ValueChanged<DateTime> onSelectedDate,
+      @required DateTime initialDate,
+      @required String title,
+    }) {
+  final dialog = Dialog(
+    child: DateTimeDialog(
+      onSelectedDate: onSelectedDate,
+      initialDate: initialDate,
+      title: title,
+    ),
+  );
+
+  showDialog(context: context, builder: (BuildContext context) => dialog);
+}

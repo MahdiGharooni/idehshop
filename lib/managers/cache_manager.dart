@@ -46,17 +46,17 @@ class CacheManager extends BaseCacheManager {
         if (newCached == null) {
           if (oldCached == null) return null;
           var backupJsonFile =
-              json.decode(await File(oldCached.file.path).readAsString());
+          json.decode(await File(oldCached.file.path).readAsString());
           putFile(url, backupJsonFile);
           return backupJsonFile;
         }
         var newFileMeta =
-            json.decode(await File(newCached.file.path).readAsString())['meta'];
+        json.decode(await File(newCached.file.path).readAsString())['meta'];
         if (newFileMeta != null) {
           if (newFileMeta['status'] != 200) {
             if (oldCached == null) return null;
             var backupJsonFile =
-                json.decode(await File(oldCached.file.path).readAsString());
+            json.decode(await File(oldCached.file.path).readAsString());
             putFile(url, backupJsonFile);
             return backupJsonFile;
           }

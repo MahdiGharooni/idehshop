@@ -50,7 +50,25 @@ class DataBaseManager {
     });
   }
 
+  Future<List<Map<String, dynamic>>> readFavoriteShops() async {
+    return await _db.transaction((txn) async {
+      return await txn.query(FAVORITE_SHOPS);
+    });
+  }
 
+  Future<dynamic> updateFavoriteShop(String id, int favorite) async {
+    return await _db.transaction((txn) async {
+      return await txn.update(
+        FAVORITE_SHOPS,
+        {
+          "favorite": favorite,
+        },
+        where: "id = ?",
+        whereArgs: [id],
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    });
+  }
 
   Future close() async => _db.close();
 }

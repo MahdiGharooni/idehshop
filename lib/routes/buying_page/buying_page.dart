@@ -257,6 +257,98 @@ class _BuyingPageState extends State<BuyingPage> {
     ));
   }
 
+  _showUserInfoDialog(String msg, BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'تکمیل اطلاعات کاربری',
+            textAlign: TextAlign.right,
+          ),
+          content: Text(
+            msg,
+            style: Theme.of(context).textTheme.bodyText1,
+            textAlign: TextAlign.right,
+          ),
+          actions: [
+            FlatButton(
+              child: Text(
+                'ویرایش اطلاعات',
+                style: Theme.of(context).textTheme.bodyText2.copyWith(
+                      color: Theme.of(context).accentColor,
+                    ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pushNamed('/profile');
+              },
+            ),
+          ],
+          actionsPadding: EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 5,
+          ),
+        );
+      },
+    );
+  }
+
+  _getFinalPrice() {
+    num _finalPrice = 0;
+    _shoppingBloc.buyingProducts.asMap().forEach((index, element) {
+      if (element.offPrice != null && '${element.offPrice}' != '0') {
+        _finalPrice = _finalPrice +
+            (int.parse('${element.offPrice}') *
+                double.parse(
+                    _shoppingBloc.finalBuyingMeasurementIndexes[index]));
+      } else {
+        _finalPrice = _finalPrice +
+            (int.parse('${element.price}') *
+                double.parse(
+                    _shoppingBloc.finalBuyingMeasurementIndexes[index]));
+      }
+    });
+
+    setState(() {
+      finalPrice = _finalPrice;
+    });
+  }
+
+  _getShopDetails() async {
+    final res = await http.get(
+      '$BASE_URI/shop/info/${_shoppingBloc.selectedShop.id}',
+      headers: {
+        'Authorization': "Bearer ${_authenticationBloc.user.authCode}",
+      },
+    );
+
+    if (res.statusCode == 200) {
+      ResponseWrapper wrapper = ResponseWrapper.fromJson(jsonDecode(res.body));
+      if (wrapper.code == 200) {
+        setState(() {
+          _store = Store.fromJson(wrapper.data);
+        });
+        _getTransferPrice();
+      }
+    }
+  }
+
+  _getTransferPrice() {
+    _location = _permissionBloc.selectedAddress;
+    double latDif = (_store.lat - _location.lat);
+    double lngDif = (_store.long - _location.lng);
+    double latPow = pow(latDif, 2);
+    double lngPow = pow(lngDif, 2);
+    double addPows = lngPow + latPow;
+    double squareRoot = sqrt(addPows);
+    if (squareRoot <= _store.limitDistance) {
+      _transferPrice = _store.transportPriceNear;
+    } else {
+      _transferPrice = _store.transportPriceFar;
+    }
+    setState(() {});
+  }
 
   TextEditingController _getProductDescription(String _productId) {
     String des;

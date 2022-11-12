@@ -648,5 +648,310 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
+  _productStoreInfoCardSelected(BuildContext context, ProductAndStoreInfo _p) {
+    _shoppingBloc.selectedProduct = Product(
+        id: _p.id,
+        title: _p.title,
+        price: _p.price,
+        offPrice: _p.offPrice,
+        imageAddresses: _p.imageAddresses,
+        measurement: _p.measurement,
+        measurementIndex: _p.measurementIndex);
 
+    if (_shoppingBloc.buyingProducts.isNotEmpty &&
+        _shoppingBloc.selectedShop != null &&
+        "${_shoppingBloc.selectedShop.title}" != "${_p.shopTitle}") {
+      return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              'تغییر فروشگاه',
+              textAlign: TextAlign.right,
+            ),
+            content: Text(
+              'با تغییر فروشگاه، اقلام خریداری شده حذف میشوند',
+              style: Theme.of(context).textTheme.bodyText1,
+              textAlign: TextAlign.right,
+            ),
+            actions: [
+              FlatButton(
+                child: Text(
+                  'کالای های قبلی حذف شوند',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () {
+                  _shoppingBloc.buyingProducts.clear();
+                  _shoppingBloc.finalBuyingMeasurementIndexes.clear();
+                  _shoppingBloc.selectedShop = Store.fromProductStoreInfo(_p);
+                  _shoppingBloc
+                      .add(SetNewShopAsSelectedShopEvent(shopId: _p.id));
+                  Navigator.of(context).pop();
+                  Navigator.pushNamed(context, '/customerProductPage');
+                },
+              ),
+              FlatButton(
+                child: Text(
+                  'ادامه خرید',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+            actionsPadding: EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 5,
+            ),
+          );
+        },
+      );
+    } else {
+      _shoppingBloc.selectedShop = Store(title: _p.shopTitle);
+      _shoppingBloc.add(SetNewShopAsSelectedShopEvent(shopId: _p.id));
+      Navigator.pushNamed(context, '/customerProductPage');
+    }
+  }
+
+  _search(REQUEST_TYPE _requestType) async {
+    if (_requestType == REQUEST_TYPE.firstRequest) {
+      setState(() {
+        _searchingLoading = true;
+      });
+    }
+    String _url = '';
+    var res;
+
+    /// search product in a shop
+    if (widget.searchType == SEARCH_TYPE.productInStore) {
+      _url =
+      '$BASE_URI/shop/product/search/${_shoppingBloc.selectedShop.id}?title=$_value';
+      res = await http.get(
+        _url,
+        headers: {
+          'Authorization': "Bearer ${_shoppingBloc.authCode}",
+        },
+      );
+
+      /// search a shop by title in near
+      /// todo : add category id
+    } else if (widget.searchType == SEARCH_TYPE.productInNearStores &&
+        _searchItem == SEARCH_ITEM.shop) {
+      _url =
+      '$BASE_URI/shop/search/${_permissionBloc.selectedAddress.id}/$_page?title=$_value&where=$_whereValue';
+      if (widget.categoryId != null && widget.categoryId != '') {
+        _url += '&categoryId=${widget.categoryId}';
+      }
+      res = await http.get(
+        _url,
+        headers: {
+          'Authorization': "Bearer ${_shoppingBloc.authCode}",
+        },
+        // body: jsonEncode(
+        //     {"sortByScore": _searchOrder == SEARCH_ORDER.score ? true : false}),
+      );
+
+      /// search product in shops
+    } else if (widget.searchType == SEARCH_TYPE.productInNearStores) {
+      _url =
+      '$BASE_URI/product/search/${_permissionBloc.selectedAddress.id}/$_page?title=$_value&where=$_whereValue';
+      if (widget.categoryId != null && widget.categoryId != '') {
+        _url += '&categoryId=${widget.categoryId}';
+      }
+      res = await http.get(
+        _url,
+        headers: {
+          'Authorization': "Bearer ${_shoppingBloc.authCode}",
+        },
+        // body: jsonEncode(
+        //     {"sortByScore": _searchOrder == SEARCH_ORDER.score ? true : false}),
+      );
+    }
+    ResponseWrapper wrapper = ResponseWrapper.fromJson(jsonDecode(res.body));
+    if (res.statusCode == 200 && _requestType == REQUEST_TYPE.firstRequest) {
+      setState(() {
+        _page++;
+        _searchingLoading = true;
+        _products.clear();
+        _productAndStoreList.clear();
+        _stores.clear();
+      });
+      if ((wrapper.data as List).length < 25) {
+        _hasMoreDataShops = false;
+      }
+      if (widget.searchType == SEARCH_TYPE.productInStore) {
+        if (wrapper.data != null && wrapper.data is List) {
+          wrapper.data.forEach((element) {
+            _products.add(Product.fromJson(element));
+          });
+        }
+      } else if (widget.searchType == SEARCH_TYPE.productInNearStores &&
+          _searchItem == SEARCH_ITEM.shop) {
+        if (wrapper.data != null && wrapper.data is List) {
+          wrapper.data.forEach((element) {
+            _stores.add(Store.fromJson(element));
+          });
+        }
+      } else if (widget.searchType == SEARCH_TYPE.productInNearStores) {
+        if (wrapper.data != null && wrapper.data is List) {
+          wrapper.data.forEach((element) {
+            _productAndStoreList.add(ProductAndStoreInfo.fromJson(element));
+          });
+        }
+      }
+      setState(() {
+        _searchingLoading = false;
+      });
+
+      ///
+    } else if (_requestType == REQUEST_TYPE.loadRequest) {
+      if (widget.searchType == SEARCH_TYPE.productInStore) {
+        if (wrapper.data != null && wrapper.data is List) {
+          wrapper.data.forEach((element) {
+            _products.add(Product.fromJson(element));
+          });
+        }
+      } else if (widget.searchType == SEARCH_TYPE.productInNearStores &&
+          _searchItem == SEARCH_ITEM.shop) {
+        if (wrapper.data != null && wrapper.data is List) {
+          wrapper.data.forEach((element) {
+            _stores.add(Store.fromJson(element));
+          });
+        }
+      } else if (widget.searchType == SEARCH_TYPE.productInNearStores) {
+        if (wrapper.data != null && wrapper.data is List) {
+          wrapper.data.forEach((element) {
+            _productAndStoreList.add(ProductAndStoreInfo.fromJson(element));
+          });
+        }
+      }
+      if ((wrapper.data as List).length < 25) {
+        _hasMoreDataShops = false;
+      }
+      setState(() {
+        _page++;
+        _loading2 = false;
+      });
+    } else {
+      setState(() {
+        _searchingLoading = false;
+      });
+    }
+  }
+
+  _shopSelected(BuildContext context, Store _selectedShop) {
+    if (_shoppingBloc.buyingProducts.isNotEmpty &&
+        ("${_shoppingBloc.selectedShop.id}" != "${_selectedShop.id}" &&
+            _shoppingBloc.selectedShop.title != _selectedShop.title)) {
+      return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              'تغییر فروشگاه',
+              textAlign: TextAlign.right,
+            ),
+            content: Text(
+              'با تغییر فروشگاه، اقلام خریداری شده حذف میشوند',
+              style: Theme.of(context).textTheme.bodyText1,
+              textAlign: TextAlign.right,
+            ),
+            actions: [
+              FlatButton(
+                child: Text(
+                  'کالای های قبلی حذف شوند',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () {
+                  _shoppingBloc.buyingProducts.clear();
+                  _shoppingBloc.finalBuyingMeasurementIndexes.clear();
+                  _shoppingBloc.selectedShop = _selectedShop;
+                  _shoppingBloc.add(
+                      SetNewShopAsSelectedShopEvent(shopId: _selectedShop.id));
+                  Navigator.of(context).pop();
+                  Navigator.pushNamed(context, '/customerStorePage');
+                },
+              ),
+              FlatButton(
+                child: Text(
+                  'ادامه خرید',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+            actionsPadding: EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 5,
+            ),
+          );
+        },
+      );
+    } else {
+      _shoppingBloc.selectedShop = _selectedShop;
+      _shoppingBloc
+          .add(SetNewShopAsSelectedShopEvent(shopId: _selectedShop.id));
+      Navigator.pushNamed(context, '/customerStorePage');
+    }
+  }
+
+  _checkPreOrder(BuildContext context, Store _store,
+      [ProductAndStoreInfo _productStoreInfo]) {
+    if (_store.hasPreOrder) {
+      return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              'پیش سفارش',
+              textAlign: TextAlign.right,
+            ),
+            content: Text(
+              'این فروشگاه قابلیت پیش سفارش دارد و شما میتوانید هم اکنون سفارش خود را ثبت کرده ولی در ساعت کاری فروشگاه آنرا تحویل بگیرید.',
+              style: Theme.of(context).textTheme.bodyText1,
+              textAlign: TextAlign.right,
+            ),
+            actions: [
+              FlatButton(
+                child: Text(
+                  'ثبت پیش سفارش',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  if (_productStoreInfo != null) {
+                    _productStoreInfoCardSelected(context, _productStoreInfo);
+                  } else {
+                    _shopSelected(context, _store);
+                  }
+                },
+              ),
+              FlatButton(
+                child: Text(
+                  'خیر',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+            actionsPadding: EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 5,
+            ),
+          );
+        },
+      );
+    }
+  }
 }

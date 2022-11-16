@@ -533,5 +533,223 @@ class _CategoryPageState extends State<CategoryPage> {
     return true;
   }
 
+  _basketClicked(BuildContext context) {
+    if (_shoppingBloc.buyingProducts.length == 0) {
+      Fluttertoast.showToast(
+        msg: "سبد خرید شما خالی است.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 1,
+        fontSize: 16.0,
+        backgroundColor: Theme.of(context).primaryColor,
+        textColor: Colors.white,
+      );
+    } else {
+      Navigator.pushNamed(context, '/buying');
+    }
+  }
 
+  _getStoresAsSelectedShopKind(
+      REQUEST_TYPE _requestType, String _selectedAddressId) async {
+    final response = await http.get(
+      "$BASE_URI/shops/$_selectedAddressId/$_page?categoryId=${_selectedShopKind.id}&where=$_whereValue",
+      headers: _headers,
+    );
+
+    if (response.statusCode == 200) {
+      ResponseWrapper responseWrapper = ResponseWrapper.fromJson(
+        jsonDecode(response.body),
+      );
+      if (responseWrapper.code == 200) {
+        if (_requestType == REQUEST_TYPE.firstRequest) {
+          _stores.clear();
+          (responseWrapper.data as List).forEach((element) {
+            _stores.add(
+              Store.fromJson(element),
+            );
+            if ((responseWrapper.data as List).length < 25) {
+              _hasMoreDataShops = false;
+            }
+          });
+          if (mounted) {
+            setState(() {
+              _page++;
+              _loading = false;
+            });
+          }
+        } else {
+          final _data = responseWrapper.data;
+          _page++;
+          if (_data != null && (_data as List).isNotEmpty) {
+            (_data as List).forEach((element) {
+              _stores.add(
+                Store(
+                  id: element['id'],
+                  kind: element['kind'],
+                  title: element['title'],
+                  imageAddress: element['imageAddress'],
+                  score: element['score'] ?? 0,
+                  lat: null,
+                  long: null,
+                ),
+              );
+            });
+            if ((_data as List).length < 25) {
+              _hasMoreDataShops = false;
+            }
+          }
+          setState(() {
+            _loading = false;
+            _loading2 = false;
+          });
+        }
+      }
+    } else {
+      setState(() {
+        _loading = false;
+      });
+    }
+  }
+
+  _shopSelected(BuildContext context, Store _selectedShop) {
+    if (_shoppingBloc.buyingProducts.isNotEmpty &&
+        ("${_shoppingBloc.selectedShop.id}" != "${_selectedShop.id}" &&
+            _shoppingBloc.selectedShop.title != _selectedShop.title)) {
+      return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              'تغییر فروشگاه',
+              textAlign: TextAlign.right,
+            ),
+            content: Text(
+              'با تغییر فروشگاه، اقلام خریداری شده حذف میشوند',
+              style: Theme.of(context).textTheme.bodyText1,
+              textAlign: TextAlign.right,
+            ),
+            actions: [
+              FlatButton(
+                child: Text(
+                  'کالای های قبلی حذف شوند',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () {
+                  _shoppingBloc.buyingProducts.clear();
+                  _shoppingBloc.finalBuyingMeasurementIndexes.clear();
+                  _shoppingBloc.selectedShop = _selectedShop;
+                  _shoppingBloc.add(
+                      SetNewShopAsSelectedShopEvent(shopId: _selectedShop.id));
+                  Navigator.of(context).pop();
+                  Navigator.pushNamed(context, '/customerStorePage');
+                },
+              ),
+              FlatButton(
+                child: Text(
+                  'ادامه خرید',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+            actionsPadding: EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 5,
+            ),
+          );
+        },
+      );
+    } else {
+      _shoppingBloc.selectedShop = _selectedShop;
+      _shoppingBloc
+          .add(SetNewShopAsSelectedShopEvent(shopId: _selectedShop.id));
+      Navigator.pushNamed(context, '/customerStorePage');
+    }
+  }
+
+  Future<String> _onRefresh() async {
+    setState(() {
+      _loading = true;
+      _hasMoreDataShops = true;
+      _stores = [];
+      _page = 1;
+    });
+    // print('refresh');
+    _getStoresAsSelectedShopKind(
+        REQUEST_TYPE.firstRequest, '${_permissionBloc.selectedAddress.id}');
+    return 'OK';
+  }
+
+  _search(BuildContext context) {
+    if (_permissionBloc.selectedAddress != null) {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (context) {
+          return SearchPage(
+            hint: 'نام محصول/فروشگاه',
+            searchType: SEARCH_TYPE.productInNearStores,
+            categoryId: _selectedShopKind.id ?? '',
+          );
+        },
+      ));
+    } else {
+      return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return HomeTabAddressDialog();
+        },
+      );
+    }
+  }
+
+  _checkPreOrder(BuildContext context, Store _store) {
+    if (_store.hasPreOrder) {
+      return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text(
+              'پیش سفارش',
+              textAlign: TextAlign.right,
+            ),
+            content: Text(
+              'این فروشگاه قابلیت پیش سفارش دارد و شما میتوانید هم اکنون سفارش خود را ثبت کرده ولی در ساعت کاری فروشگاه آنرا تحویل بگیرید.',
+              style: Theme.of(context).textTheme.bodyText1,
+              textAlign: TextAlign.right,
+            ),
+            actions: [
+              FlatButton(
+                child: Text(
+                  'ثبت پیش سفارش',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _shopSelected(context, _store);
+                },
+              ),
+              FlatButton(
+                child: Text(
+                  'خیر',
+                  style: Theme.of(context).textTheme.bodyText2.copyWith(
+                    color: Theme.of(context).accentColor,
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+            actionsPadding: EdgeInsets.symmetric(
+              horizontal: 10,
+              vertical: 5,
+            ),
+          );
+        },
+      );
+    }
+  }
 }

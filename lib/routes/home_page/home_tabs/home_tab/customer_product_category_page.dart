@@ -292,6 +292,22 @@ class _CustomerProductCategoryPageState
   }
 
 
+  _basketClicked(BuildContext context) {
+    if (_shoppingBloc.buyingProducts.length == 0) {
+      Fluttertoast.showToast(
+        msg: "سبد خرید شما خالی است.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 1,
+        fontSize: 16.0,
+        backgroundColor: Theme.of(context).primaryColor,
+        textColor: Colors.white,
+      );
+    } else {
+      Navigator.pushNamed(context, '/buying');
+    }
+  }
+
   _productCategorySelected(BuildContext context, Product p) {
     _shoppingBloc.selectedProduct = p;
     Navigator.pushNamed(context, '/customerProductPage');

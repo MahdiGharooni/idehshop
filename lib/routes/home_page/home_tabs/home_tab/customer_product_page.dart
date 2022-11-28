@@ -257,6 +257,179 @@ class _CustomerProductPageState extends State<CustomerProductPage> {
     );
   }
 
+  Widget _getSliverAppBar(Product _product) {
+    return SliverAppBar(
+      iconTheme: IconThemeData(
+        color: Colors.white,
+      ),
+      leading: Builder(
+        builder: (context) {
+          return InkWell(
+            child: Stack(
+              children: [
+                IconButton(
+                  icon: Image.asset(
+                    'assets/images/basket.png',
+                    scale: 3,
+                  ),
+                  tooltip: 'خرید‌نهایی',
+                  onPressed: null,
+                ),
+                (_shoppingBloc != null &&
+                    _shoppingBloc.buyingProducts.length > 0)
+                    ? Positioned(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: Colors.red,
+                    ),
+                    child: Text(
+                      "${_shoppingBloc.buyingProducts.length}",
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    height: 20,
+                    width: 20,
+                  ),
+                  top: 10.0,
+                  left: 10.0,
+                )
+                    : Container(),
+              ],
+            ),
+            onTap: () => _basketClicked(context),
+          );
+        },
+      ),
+      actions: [
+        IconButton(
+          icon: Icon(
+            Icons.arrow_forward,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+      flexibleSpace: FlexibleSpaceBar(
+        title: AnimatedOpacity(
+          opacity: _showSliverAppBarTitle ? 1.0 : 0.0,
+          duration: Duration(milliseconds: 150),
+          child: Container(
+            child: Text(
+              _product.title,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: Theme.of(context).textTheme.subtitle2.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            width: MediaQuery.of(context).size.width - 80,
+          ),
+        ),
+        background: _product.imageAddresses.isNotEmpty
+            ? Carousel(
+          images: _images,
+          defaultImage: Image(
+            image: AssetImage(
+              'assets/images/default_basket.png',
+            ),
+            fit: BoxFit.fitWidth,
+          ),
+          autoplay: false,
+          dotBgColor: Colors.black26,
+          dotSize: 8,
+        )
+            : Image(
+          image: AssetImage(
+            'assets/images/default_basket.png',
+          ),
+          fit: BoxFit.fitWidth,
+        ),
+      ),
+      centerTitle: true,
+      expandedHeight: 200.0,
+      floating: false,
+      pinned: true,
+    );
+  }
+
+  _basketClicked(BuildContext context) {
+    if (_shoppingBloc.buyingProducts.length == 0) {
+      Fluttertoast.showToast(
+        msg: "سبد خرید شما خالی است.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 1,
+        fontSize: 16.0,
+        backgroundColor: Theme.of(context).primaryColor,
+        textColor: Colors.white,
+      );
+    } else {
+      Navigator.pushNamed(context, '/buying');
+    }
+  }
+
+  _getProductDetails() async {
+    final res = await http.get(
+      '$BASE_URI/product/info/${_shoppingBloc.selectedProduct.id}',
+      headers: {
+        'Authorization': "Bearer ${_shoppingBloc.authCode}",
+      },
+    );
+    if (res.statusCode == 200) {
+      ResponseWrapper _wrapper = ResponseWrapper.fromJson(
+        jsonDecode(res.body),
+      );
+      if (_wrapper.code == 200) {
+        _productDetails = Product.fromJson(_wrapper.data);
+
+        setState(() {
+          _shoppingBloc.selectedProduct = _productDetails;
+        });
+        _getProductImages();
+      }
+    }
+  }
+
+  _getProductImages() {
+    _productDetails.imageAddresses.forEach((element) {
+      _images.add(
+        InkWell(
+          child: Image.network(
+            'http://$element',
+            fit: BoxFit.fitWidth,
+          ),
+          onTap: () {
+            if (mounted) {
+              setState(() {
+                _overLayed = true;
+              });
+            }
+            _overLayEntry = OverlayEntry(builder: (context) {
+              return Container(
+                child: GestureDetector(
+                  child: Image.network(
+                    'http://$element',
+                    fit: BoxFit.fitWidth,
+                  ),
+                  onTap: () {
+                    _overLayEntry.remove();
+                    setState(() {
+                      _overLayed = false;
+                    });
+                  },
+                ),
+                color: Colors.black,
+              );
+            });
+            _overlayState.insert(_overLayEntry);
+          },
+        ),
+      );
+    });
+  }
 
   Future<bool> _onWillPop() async {
     if (_overLayed) {

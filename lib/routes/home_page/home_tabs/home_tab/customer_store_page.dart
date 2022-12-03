@@ -297,7 +297,52 @@ class _CustomerStorePageState extends State<CustomerStorePage> {
     Navigator.pushNamed(context, '/customerProductCategoryPage');
   }
 
-
+  _getShopProductCategories(REQUEST_TYPE _requestType) async {
+    final response = await http.get(
+      "$BASE_URI/products/categories/${_selectedShop.id}/$_page",
+      headers: _headers,
+    );
+    if (response.statusCode == 200) {
+      ResponseWrapper responseWrapper = ResponseWrapper.fromJson(
+        jsonDecode(response.body),
+      );
+      if (responseWrapper.code == 200) {
+        if (_requestType == REQUEST_TYPE.firstRequest) {
+          _productsCategories.clear();
+          (responseWrapper.data as List).forEach((element) {
+            _productsCategories.add(ProductCategory.fromJson(element));
+          });
+          if ((responseWrapper.data as List).length < 25) {
+            _hasMoreData = false;
+          }
+          setState(() {
+            _page++;
+            _loading = false;
+          });
+        } else {
+          final _data = responseWrapper.data;
+          _page++;
+          if (_data != null && (_data as List).isNotEmpty) {
+            (responseWrapper.data as List).forEach((element) {
+              _productsCategories.add(ProductCategory.fromJson(element));
+            });
+            if ((_data as List).length < 25) {
+              _hasMoreData = false;
+            }
+          }
+          setState(() {
+            _loading = false;
+            _loading2 = false;
+          });
+        }
+      }
+    } else {
+      setState(() {
+        _loading = false;
+        _loading2 = false;
+      });
+    }
+  }
 
   _search(BuildContext context) {
     Navigator.of(context).push(MaterialPageRoute(

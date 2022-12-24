@@ -323,5 +323,89 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  _tabSelected(int index) {
+    if (index == 0) {
+      _customerNewNotifsCount = 0;
+    }
+    setState(() {
+      _index = index;
+      _title = _titles[index];
+    });
+  }
 
+  _basketClicked(BuildContext context) {
+    if (_shoppingBloc.buyingProducts.length == 0) {
+      Fluttertoast.showToast(
+        msg: "سبد خرید شما خالی است.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 1,
+        fontSize: 16.0,
+        backgroundColor: Theme.of(context).primaryColor,
+        textColor: Colors.white,
+      );
+    } else {
+      Navigator.pushNamed(context, '/buying');
+    }
+  }
+
+  Future<bool> _onWillPop() async {
+    DateTime now = DateTime.now();
+
+    bool backButton = (_backPressedTime == null) ||
+        (now.difference(_backPressedTime) > Duration(seconds: 1));
+    if (backButton) {
+      _backPressedTime = now;
+      Fluttertoast.showToast(
+        msg: "برای خروج دوبار کلیک کنید",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        timeInSecForIosWeb: 1,
+        fontSize: 16.0,
+        backgroundColor: Theme.of(context).primaryColor,
+        textColor: Colors.white,
+      );
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  _getNewNotifs() async {
+    final res = await http.get(
+      '$BASE_URI/customer/new/notifications/count',
+      headers: {
+        'Authorization': "Bearer ${_shoppingBloc.authCode}",
+      },
+    );
+    if (res.statusCode == 200) {
+      ResponseWrapper wrapper = ResponseWrapper.fromJson(jsonDecode(res.body));
+      _customerNewNotifsCount = wrapper.data['count'];
+      _shoppingBloc
+          .add(AddCustomerNewNotifications(notifs: _customerNewNotifsCount));
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  _search(BuildContext context) {
+    if (_permissionBloc.selectedAddress != null) {
+      Navigator.of(context).push(MaterialPageRoute(
+        builder: (context) {
+          return SearchPage(
+            hint: 'نام محصول/فروشگاه',
+            searchType: SEARCH_TYPE.productInNearStores,
+          );
+        },
+      ));
+    } else {
+      return showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return HomeTabAddressDialog();
+        },
+      );
+    }
+  }
 }

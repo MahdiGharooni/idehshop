@@ -504,5 +504,138 @@ class _StoreDetailsPageState extends State<StoreDetailsPage> {
     );
   }
 
+  _getStoreDetails() async {
+    final response = await http.get(
+      '$BASE_URI/shop/location/${_storeBloc.currentStore.id}',
+      headers: {
+        'Authorization': "Bearer ${_storeBloc.user.authCode}",
+      },
+    );
+    if (response.statusCode == 200) {
+      ResponseWrapper responseWrapper = ResponseWrapper.fromJson(
+        jsonDecode(response.body),
+      );
+      if (responseWrapper.code == 200) {
+        final Map<dynamic, dynamic> _data = responseWrapper.data;
+        _currentStore = Store.fromJson(_data);
+      }
+    }
+    setState(() {
+      _storeBloc.currentStore = _currentStore;
+      _storeBloc.add(EnterIntoStabilityState()); // save changes on currentStore
+      _loading = false;
+    });
+  }
+
+  _editSelected() {
+    Navigator.pushNamed(context, '/storeDetailsEdit');
+  }
+
+  _deleteShop(bool value, BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            'حذف کردن فروشگاه',
+            style: Theme.of(context).textTheme.bodyText2,
+            textAlign: TextAlign.right,
+          ),
+          content: Text(
+            'آیا از حذف فروشگاه خود مطمعن هستید؟ این عمل برگشت پذیر نمیباشد',
+            style: Theme.of(context).textTheme.bodyText1,
+            textAlign: TextAlign.right,
+          ),
+          actions: <Widget>[
+            FlatButton(
+              child: Text(
+                'خیر',
+                style: Theme.of(context).textTheme.bodyText2.copyWith(
+                  color: Theme.of(context).accentColor,
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            FlatButton(
+              child: Text(
+                'بله، حذف شود',
+                style: Theme.of(context).textTheme.bodyText2.copyWith(
+                  color: Colors.red,
+                ),
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                final res = await http.delete(
+                  '$BASE_URI/shop/location/${_currentStore.id}',
+                  headers: {
+                    'Authorization': "Bearer ${_storeBloc.user.authCode}",
+                  },
+                );
+                ResponseWrapper _wrapper =
+                ResponseWrapper.fromJson(jsonDecode(res.body));
+                if (_wrapper.code == 200) {
+                  _storeBloc.add(SubmitDeleteStoreEvent());
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => HomePage(),
+                    ),
+                        (Route<dynamic> route) => false,
+                  );
+                } else {
+                  Fluttertoast.showToast(
+                    msg: getMessage(_wrapper.message),
+                    toastLength: Toast.LENGTH_SHORT,
+                    gravity: ToastGravity.BOTTOM,
+                    timeInSecForIosWeb: 1,
+                    fontSize: 16.0,
+                    backgroundColor: Theme.of(context).primaryColor,
+                    textColor: Colors.white,
+                  );
+                }
+              },
+            ),
+          ],
+          contentPadding: EdgeInsets.all(10),
+          actionsPadding: EdgeInsets.symmetric(horizontal: 10),
+        );
+      },
+    );
+  }
+
+  _getShopCommission() async {
+    final res = await http.get(
+      "$BASE_URI/shop/buying/commission",
+      headers: {
+        'Authorization': "Bearer ${_storeBloc.user.authCode}",
+      },
+    );
+    if (res.statusCode == 200) {
+      ResponseWrapper wrapper = ResponseWrapper.fromJson(jsonDecode(res.body));
+      if (wrapper.code == 200) {
+        setState(() {
+          _commissionValue =
+          '${(double.parse(wrapper.data['commission']) * 100).round()}';
+        });
+      }
+    }
+  }
+
+  _payDialog(BuildContext context) {
+    showCustomDialog(context, 'فعالسازی فروشگاه',
+        'بدون فعالسازی شما میتوانید از امکانات این برنامه بمدت محدود استفاده کنید و پس از فعالسازی، فروشگاه شما بمدت نامحدود قابل استفاده است. برای پرداخت هزینه فعالسازی میتوانید از دکمه سبز رنگ پایین صفحه استفاده کنید.');
+  }
+
+  _preOrderDialog(BuildContext context) {
+    showCustomDialog(context, 'پیش سفارش',
+        'با فعالسازی پیش سفارش ، مشتریان میتوانند در غیر ساعت های کاری فروشگاه نیز خرید ثبت کنند.');
+  }
+
+  _defaultPayDialog(BuildContext context) {
+    showCustomDialog(context, 'درگاه اینترنتی ایده شاپ',
+        'با فعالسازی این گزینه مشتریان میتوانند در هنگام خرید با استفاده از درگاه پرداخت ایده شاپ مبلغ خرید را غیرحضوری پرداخت کنند و شما میتوانید با استفاده از سایت http://my.idehshops.ir تسویه حساب کنید، در غیر اینصورت پرداخت بصورت حضوری انجام میپذیرد.');
+  }
 
 }

@@ -63,5 +63,175 @@ class _StoreSettingsTabState extends State<StoreSettingsTab> {
     );
   }
 
+  _createRowsList() {
+    /// adding profile, messages,my stores
+    _notifsCount = _storeBloc.notifsCount;
+    _rowsList.addAll([
+      SettingsRow(
+        hasInkwellOnTap: true,
+        hasOptionIconColor: false,
+        hasOptionTextColor: false,
+        optionIconColor: Theme.of(context).accentColor,
+        hasSwitch: false,
+        inkwellOnTap: () {
+          Navigator.pushNamed(context, '/profile');
+        },
+        optionIcon: Icons.person_outline,
+        optionText: 'اطلاعات کاربری',
+      ),
+      Divider(
+        thickness: 1,
+        height: 2.0,
+      ),
+      Stack(
+        children: [
+          SettingsRow(
+            hasInkwellOnTap: true,
+            hasOptionIconColor: false,
+            hasOptionTextColor: false,
+            optionIconColor: Theme.of(context).accentColor,
+            hasSwitch: false,
+            inkwellOnTap: () {
+              setState(() {
+                _notifsCount = 0;
+                _storeBloc.add(SeenProviderNewNotifications());
+              });
+              Navigator.push(context, MaterialPageRoute(
+                builder: (context) {
+                  return Messages(role: Role.provider);
+                },
+              ));
+            },
+            optionIcon: Icons.message_outlined,
+            optionText: 'پیام‌ها',
+          ),
+          _notifsCount > 0
+              ? Positioned(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: Colors.red,
+              ),
+              child: Text(
+                "$_notifsCount",
+                style: TextStyle(
+                  color: Colors.white,
+                ),
+              ),
+              alignment: Alignment.center,
+              height: 20,
+              width: 20,
+            ),
+            top: 10.0,
+            left: 10.0,
+          )
+              : Container(),
+        ],
+      ),
+      Divider(
+        thickness: 1,
+        height: 2.0,
+      ),
+      SettingsRow(
+        hasInkwellOnTap: true,
+        hasOptionIconColor: false,
+        hasOptionTextColor: true,
+        optionIconColor: Theme.of(context).accentColor,
+        hasSwitch: false,
+        inkwellOnTap: null,
+        optionIcon: Icons.store_outlined,
+        optionText: 'فروشگاه های من',
+        optionTextColor: Colors.grey,
+      ),
+    ]);
 
+    if (_authenticationBloc.user.role == PROVIDER_ROLE &&
+        _storeBloc.stores.isNotEmpty) {
+      _storeBloc.stores.forEach((element) {
+        _rowsList.add(
+          SettingsRow(
+            hasInkwellOnTap: true,
+            hasOptionIconColor: false,
+            hasOptionTextColor: false,
+            optionIconColor: Theme.of(context).accentColor,
+            hasSwitch: false,
+            storeVerified: element.verified,
+            inkwellOnTap: () {
+              _storeBloc.currentStore = element;
+              _storeBloc.user = _authenticationBloc.user;
+              _storeBloc.products = [];
+              _storeBloc.add(EnterIntoStoreStoreEvent());
+              Navigator.pushNamed(context, '/store');
+            },
+            optionIcon: null,
+            optionText: "${element.title}",
+          ),
+        );
+      });
+    }
+
+    ///adding create store
+    _rowsList.addAll([
+      Card(
+        child: Container(
+          child: RaisedButton(
+            onPressed: () {
+              Navigator.pushNamed(context, '/createstore');
+            },
+            child: Text(
+              'ساخت فروشگاه',
+              style: TextStyle(
+                color: Theme.of(context).textTheme.button.color,
+              ),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(
+                10.0,
+              ),
+            ),
+          ),
+          height: 40.0,
+          width: 50.0,
+          margin: EdgeInsets.symmetric(horizontal: 80, vertical: 5),
+        ),
+      ),
+      Divider(
+        height: 2.0,
+      ),
+    ]);
+
+    setState(() {
+      _loading = false;
+    });
+  }
+
+  Future<void> _onRefresh() async {
+    /// get stores
+    setState(() {
+      _loading = true;
+      _stores.clear();
+      _rowsList.clear();
+    });
+    final response = await http.get(
+      '$BASE_URI/shop/locations',
+      headers: {
+        'Authorization': "Bearer ${_authenticationBloc.user.authCode}",
+      },
+    );
+    if (response.statusCode == 200) {
+      _stores.clear();
+      ResponseWrapper _responseWrapper =
+      ResponseWrapper.fromJson(jsonDecode(response.body));
+      if (_responseWrapper.code == 200) {
+        if (_responseWrapper.data != null &&
+            (_responseWrapper.data as List).isNotEmpty) {
+          (_responseWrapper.data as List).forEach((element) {
+            _stores.add(Store.fromJson(element));
+          });
+        }
+      }
+    }
+    await _createRowsList();
+    return 'OK';
+  }
 }
